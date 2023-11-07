@@ -26,7 +26,7 @@ jobs:
           go version
           CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-w -s" -o build/api-server .
 
-      - uses: cloudbees-io/configure-aws-credentials@v0
+      - uses: cloudbees-io/configure-aws-credentials@v1
         id: aws-login
         with:
           aws-region: us-east-1
@@ -35,7 +35,7 @@ jobs:
           role-to-assume: service-ecr-role
           role-duration-seconds: "3600" # need to override default of 6h as our role has 1h max
 
-      - uses: cloudbees-io/configure-ecr-credentials@v0
+      - uses: cloudbees-io/configure-ecr-credentials@v1
 
       - uses: cloudbees-io/kaniko@v1
         with:
@@ -78,7 +78,7 @@ jobs:
       - build
 
     steps:
-      - uses: cloudbees-io/configure-aws-credentials@v0
+      - uses: cloudbees-io/configure-aws-credentials@v1
         with:
           aws-region: us-east-1
           aws-access-key-id: ${{ vars.aws_access_key_id }}
@@ -86,11 +86,11 @@ jobs:
           role-to-assume: service-eks-role
           role-duration-seconds: "3600" # need to override default of 6h as our role has 1h max
 
-      - uses: cloudbees-io/configure-eks-credentials@v0
+      - uses: cloudbees-io/configure-eks-credentials@v1
         with:
           name: arch-saas
 
-      - uses: cloudbees-io/configure-ecr-credentials@v0
+      - uses: cloudbees-io/configure-ecr-credentials@v1
 
       - id: install-chart
         name: Install helm chart
