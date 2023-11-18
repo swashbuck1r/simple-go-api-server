@@ -15,7 +15,7 @@ jobs:
         run: |
           echo "hello world 9"
 
-      # - uses: cloudbees-io/checkout@v1
+      - uses: cloudbees-io/checkout@v1
 
       # - name: build code
       #   uses: docker://golang:1.20.3-alpine3.17
