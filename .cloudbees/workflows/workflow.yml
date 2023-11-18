@@ -17,14 +17,14 @@ jobs:
 
       - uses: cloudbees-io/checkout@v1
 
-      # - name: build code
-      #   uses: docker://golang:1.20.3-alpine3.17
-      #   shell: sh
-      #   run: |
-      #     export GOPATH=$HOME/go
-      #     export PATH=$PATH:$GOPATH/bin
-      #     go version
-      #     CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-w -s" -o build/api-server .
+      - name: build code
+        uses: docker://golang:1.20.3-alpine3.17
+        shell: sh
+        run: |
+          export GOPATH=$HOME/go
+          export PATH=$PATH:$GOPATH/bin
+          go version
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-w -s" -o build/api-server .
 
       # - uses: cloudbees-io/configure-aws-credentials@v1
       #   id: aws-login
