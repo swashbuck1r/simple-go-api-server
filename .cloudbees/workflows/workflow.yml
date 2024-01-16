@@ -78,7 +78,7 @@ jobs:
 
       - uses: cloudbees-io/configure-eks-credentials@v1
         with:
-          name: cloudbees-quickstart
+          name: cloudbees-quickstart-cluster
 
       - uses: cloudbees-io/configure-ecr-credentials@v1
 
