@@ -51,7 +51,7 @@ ingress:
     alb.ingress.kubernetes.io/target-type: ip,
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS":443}, {"HTTP":80}]',
     alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-east-1:189768267137:certificate/99bc14a9-bc03-4d4a-92ca-88842ca76f39,
-    #  external-dns.alpha.kubernetes.io/hostname: simple-go-api-server.arch.beescloud.com
+    # external-dns.alpha.kubernetes.io/hostname: simple-go-api-server.arch.beescloud.com
   }
     # kubernetes.io/ingress.class: nginx
     # kubernetes.io/tls-acme: "true"
