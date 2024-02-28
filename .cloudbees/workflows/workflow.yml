@@ -13,7 +13,7 @@ jobs:
         uses: docker://golang:1.20.3-alpine3.17
         shell: sh
         run: |
-          echo "hello world 1"
+          echo "hello world 3"
 
       - uses: cloudbees-io/checkout@v1
 
@@ -37,7 +37,7 @@ jobs:
 
       - uses: cloudbees-io/configure-ecr-credentials@v1
 
-      - uses: cloudbees-io/kaniko
+      - uses: cloudbees-io/kaniko@v1
         with:
           destination: ${{ steps.aws-login.outputs.aws-account-id }}.dkr.ecr.us-east-1.amazonaws.com/simple-go-api-server-image:latest
 
