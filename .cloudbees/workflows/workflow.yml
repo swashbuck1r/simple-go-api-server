@@ -25,11 +25,12 @@ jobs:
           export PATH=$PATH:$GOPATH/bin
           go version
           CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-w -s" -o build/api-server .
-      - uses: cloudbees-io/configure-aws-credentials@v1
+      - name: Login to AWS
+        uses: cloudbees-io/configure-aws-credentials@v1
         id: aws-login
         with:
           aws-region: us-east-1
-          role-to-assume: cloudbees-infra-mgmt
+          role-to-assume: arn:aws:iam::189768267137:role/cloudbees-infra-mgmt
           role-duration-seconds: "3600"
       - uses: cloudbees-io/configure-ecr-credentials@v1
       - uses: cloudbees-io/kaniko@v1
@@ -58,10 +59,12 @@ jobs:
     needs:
       - build
     steps:
-      - uses: cloudbees-io/configure-aws-credentials@v1
+      - name: Login to AWS
+        uses: cloudbees-io/configure-aws-credentials@v1
+        id: aws-login
         with:
           aws-region: us-east-1
-          role-to-assume: cloudbees-infra-mgmt
+          role-to-assume: arn:aws:iam::189768267137:role/cloudbees-infra-mgmt
           role-duration-seconds: "3600"
       - uses: cloudbees-io/configure-eks-credentials@v1
         with:
