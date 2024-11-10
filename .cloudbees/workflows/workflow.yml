@@ -68,7 +68,7 @@ jobs:
           role-duration-seconds: "3600"
       - uses: cloudbees-io/configure-eks-credentials@v1
         with:
-          name: cloudbees-quickstart-cluster
+          name: cloudbees-quickstart
       - uses: cloudbees-io/configure-ecr-credentials@v1
       - id: install-chart
         name: Install helm chart
