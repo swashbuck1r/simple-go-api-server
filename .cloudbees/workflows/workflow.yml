@@ -92,7 +92,7 @@ jobs:
           chart-location: ${{ needs.build-and-publish.outputs.chart-location }}
           version: ${{ needs.build-and-publish.outputs.chart-version }}
           release-name: ${{ env.APP_NAME }}
-          namespace: ${{ env.UNIQUE_PREFIX }}-${{ env.APP_NAME }}
+          namespace: ${{ env.APP_NAME }}
           values: |
             ingress:
               hosts:
