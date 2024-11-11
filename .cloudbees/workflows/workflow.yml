@@ -1,80 +1,102 @@
 apiVersion: automation.cloudbees.io/v1alpha1
 kind: workflow
-name: build-n-deploy
-on:
+name: Workflow
+
+on: 
   push:
     branches:
-      - "*"
+      - '**'
   workflow_dispatch:
-permissions:
-  id-token: write
+
+# Environment vars
+env:
+  APP_NAME: java-app
+  HOSTNAME: simple-go-api-server.arch.beescloud.com
+
 jobs:
-  build:
+  build-and-publish:
     steps:
-      - name: Say hello
-        uses: docker://golang:1.20.3-alpine3.17
+      - name: Checkout 
+        uses: cloudbees-io/checkout@v1
+      - name: Build JAR
+        uses: docker://maven:3.9.6-eclipse-temurin-17
         shell: sh
         run: |
-          echo "hello world 3"
-      - uses: cloudbees-io/checkout@v1
-      - name: build code
-        uses: docker://golang:1.20.3-alpine3.17
-        shell: sh
-        run: |
-          export GOPATH=$HOME/go
-          export PATH=$PATH:$GOPATH/bin
-          go version
-          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-w -s" -o build/api-server .
+          mvn clean install
+
       - name: Login to AWS
         uses: cloudbees-io/configure-aws-credentials@v1
         id: aws-login
         with:
           aws-region: us-east-1
-          role-to-assume: arn:aws:iam::189768267137:role/cloudbees-infra-mgmt
-          role-duration-seconds: "3600"
-      - uses: cloudbees-io/configure-ecr-credentials@v1
-      - uses: cloudbees-io/kaniko@v1
+          aws-access-key-id: ${{ vars.aws_access_key_id }}
+          aws-secret-access-key: ${{ secrets.aws_secret_access_key }}
+          role-to-assume: cloudbees-infra-mgmt
+          role-duration-seconds: "3600" # need to override default of 6h as our role has 1h max.
+
+      - name: Configure container registry 
+        uses: cloudbees-io/configure-ecr-credentials@v1
+
+      - name: Build and publish container image
+        id: image-publish
+        uses: cloudbees-io/kaniko@v1
         with:
-          destination: ${{ steps.aws-login.outputs.aws-account-id }}.dkr.ecr.us-east-1.amazonaws.com/simple-go-api-server-image:latest
+          destination: ${{ steps.aws-login.outputs.aws-account-id }}.dkr.ecr.us-east-1.amazonaws.com/${{ env.APP_NAME }}-image:${{ cloudbees.version }}
+
       - id: helmpkg
         name: Package Helm chart
-        uses: cloudbees-io/helm-package
+        uses: cloudbees-io/helm-package@v1
         with:
           chart: ./charts/myapp
           destination: ./packaged-charts
-          version: 0.0.1
+          version: "0.0.1"
           values: |
             image:
-              repository:  ${{ steps.aws-login.outputs.aws-account-id }}.dkr.ecr.us-east-1.amazonaws.com/simple-go-api-server-image
-              tag: latest
+              repository:  ${{ steps.aws-login.outputs.aws-account-id }}.dkr.ecr.us-east-1.amazonaws.com/${{ env.APP_NAME }}-image
+              tag: ${{ steps.image-publish.outputs.tag }}
+
       - name: Publish Helm chart
-        uses: cloudbees-io/helm-push
+        id: helm-publish
+        uses: cloudbees-io/helm-push@v1
         with:
           chart: ${{ steps.helmpkg.outputs.chart }}
           remote: oci://${{ steps.aws-login.outputs.aws-account-id }}.dkr.ecr.us-east-1.amazonaws.com
+
     outputs:
-      chart-location: oci://${{ steps.aws-login.outputs.aws-account-id }}.dkr.ecr.us-east-1.amazonaws.com/simple-go-api-server
-      chart-version: 0.0.1
+      chart-location: ${{ steps.helm-publish.outputs.chart }}
+      chart-version: ${{ steps.helm-publish.outputs.version }}
+
   deploy:
     needs:
-      - build
+      - build-and-publish
+
     steps:
-      - name: Login to AWS
-        uses: cloudbees-io/configure-aws-credentials@v1
-        id: aws-login
+      - uses: cloudbees-io/configure-aws-credentials@v1
         with:
           aws-region: us-east-1
-          role-to-assume: arn:aws:iam::189768267137:role/cloudbees-infra-mgmt
-          role-duration-seconds: "3600"
+          aws-access-key-id: ${{ vars.aws_access_key_id }}
+          aws-secret-access-key: ${{ secrets.aws_secret_access_key }}
+          role-to-assume: cloudbees-infra-mgmt
+          role-duration-seconds: "3600" # need to override default of 6h as our role has 1h max
+
       - uses: cloudbees-io/configure-eks-credentials@v1
         with:
           name: cloudbees-quickstart
+
       - uses: cloudbees-io/configure-ecr-credentials@v1
+
       - id: install-chart
         name: Install helm chart
-        uses: cloudbees-io/helm-install
+        uses: cloudbees-io/helm-install@v1
         with:
-          chart-location: ${{ needs.build.outputs.chart-location }}
-          version: ${{ needs.build.outputs.chart-version }}
-          release-name: app-chart
-          namespace: simple-go-api-server
+          chart-location: ${{ needs.build-and-publish.outputs.chart-location }}
+          version: ${{ needs.build-and-publish.outputs.chart-version }}
+          release-name: ${{ env.APP_NAME }}
+          namespace: ${{ env.UNIQUE_PREFIX }}-${{ env.APP_NAME }}
+          values: |
+            ingress:
+              hosts:
+                - paths:
+                    - path: /
+                      pathType: Prefix
+                  host: "${{ env.HOSTNAME }}"
