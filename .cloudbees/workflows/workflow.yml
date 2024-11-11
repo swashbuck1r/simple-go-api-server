@@ -18,11 +18,15 @@ jobs:
     steps:
       - name: Checkout 
         uses: cloudbees-io/checkout@v1
-      - name: Build JAR
-        uses: docker://maven:3.9.6-eclipse-temurin-17
+        
+      - name: build code
+        uses: docker://golang:1.20.3-alpine3.17
         shell: sh
         run: |
-          mvn clean install
+          export GOPATH=$HOME/go
+          export PATH=$PATH:$GOPATH/bin
+          go version
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-w -s" -o build/api-server .
 
       - name: Login to AWS
         uses: cloudbees-io/configure-aws-credentials@v1
