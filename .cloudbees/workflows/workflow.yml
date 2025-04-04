@@ -18,6 +18,7 @@ env:
   APP_NAME: java-app
   HOSTNAME: simple-go-api-server.arch.beescloud.com
 
+
 jobs:
   build-and-publish:
     steps:
