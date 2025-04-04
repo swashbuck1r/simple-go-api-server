@@ -9,6 +9,10 @@ on:
       - '**'
   workflow_dispatch:
 
+permissions:
+  scm-token-own: read
+  id-token: write
+  
 # Environment vars
 env:
   APP_NAME: java-app
