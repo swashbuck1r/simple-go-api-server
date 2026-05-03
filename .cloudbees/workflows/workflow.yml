@@ -1,30 +1,29 @@
 apiVersion: automation.cloudbees.io/v1alpha1
 kind: workflow
-name: Workflow
+name: Deploy to HiveVibe
 
-on: 
+on:
   push:
     branches:
-      - '**'
+      - "**"
   workflow_dispatch:
 
 permissions:
   scm-token-own: read
   id-token: write
-  
+
 # Environment vars
 env:
-  APP_NAME: java-app
-  HOSTNAME: simple-go-api-server.arch.beescloud.com
-
+  APP_NAME: simple-go-api-server
+  CLUSTER_NAME: hive-vibe
 
 jobs:
   build-and-publish:
     steps:
-      - name: Checkout 
+      - name: Checkout
         uses: cloudbees-io/checkout@v1
-        
-      - name: build code
+
+      - name: Build Go application
         uses: docker://golang:1.20.3-alpine3.17
         shell: sh
         run: |
@@ -38,12 +37,10 @@ jobs:
         id: aws-login
         with:
           aws-region: us-east-1
-          # aws-access-key-id: ${{ vars.aws_access_key_id }}
-          # aws-secret-access-key: ${{ secrets.aws_secret_access_key }}
           role-to-assume: arn:aws:iam::189768267137:role/cloudbees-infra-mgmt
-          role-duration-seconds: "3600" # need to override default of 6h as our role has 1h max.
+          role-duration-seconds: "3600"
 
-      - name: Configure container registry 
+      - name: Configure ECR credentials
         uses: cloudbees-io/configure-ecr-credentials@v1
 
       - name: Build and publish container image
@@ -52,16 +49,16 @@ jobs:
         with:
           destination: ${{ steps.aws-login.outputs.aws-account-id }}.dkr.ecr.us-east-1.amazonaws.com/${{ env.APP_NAME }}-image:${{ cloudbees.version }}
 
-      - id: helmpkg
-        name: Package Helm chart
+      - name: Package Helm chart
+        id: helmpkg
         uses: cloudbees-io/helm-package@v1
         with:
-          chart: ./charts/myapp
+          chart: ./charts/simple-go-api-server
           destination: ./packaged-charts
           version: "0.0.1"
           values: |
             image:
-              repository:  ${{ steps.aws-login.outputs.aws-account-id }}.dkr.ecr.us-east-1.amazonaws.com/${{ env.APP_NAME }}-image
+              repository: ${{ steps.aws-login.outputs.aws-account-id }}.dkr.ecr.us-east-1.amazonaws.com/${{ env.APP_NAME }}-image
               tag: ${{ steps.image-publish.outputs.tag }}
 
       - name: Publish Helm chart
@@ -85,29 +82,22 @@ jobs:
         id: aws-login
         with:
           aws-region: us-east-1
-          # aws-access-key-id: ${{ vars.aws_access_key_id }}
-          # aws-secret-access-key: ${{ secrets.aws_secret_access_key }}
           role-to-assume: arn:aws:iam::189768267137:role/cloudbees-infra-mgmt
-          role-duration-seconds: "3600" # need to override default of 6h as our role has 1h max.
+          role-duration-seconds: "3600"
 
-      - uses: cloudbees-io/configure-eks-credentials@v1
+      - name: Configure EKS credentials
+        uses: cloudbees-io/configure-eks-credentials@v1
         with:
-          name: cloudbees-quickstart
+          name: ${{ env.CLUSTER_NAME }}
 
-      - uses: cloudbees-io/configure-ecr-credentials@v1
+      - name: Configure ECR credentials
+        uses: cloudbees-io/configure-ecr-credentials@v1
 
-      - id: install-chart
-        name: Install helm chart
+      - name: Deploy with Helm
+        id: install-chart
         uses: cloudbees-io/helm-install@v1
         with:
           chart-location: ${{ needs.build-and-publish.outputs.chart-location }}
           version: ${{ needs.build-and-publish.outputs.chart-version }}
           release-name: ${{ env.APP_NAME }}
           namespace: ${{ env.APP_NAME }}
-          values: |
-            ingress:
-              hosts:
-                - paths:
-                    - path: /
-                      pathType: Prefix
-                  host: "${{ env.HOSTNAME }}"
